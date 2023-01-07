@@ -10,6 +10,8 @@ Future<bool> connectToServer(BuildContext context, String ip, int port) async {
     socketProvider.client = await Socket.connect(ip, port);
     socketProvider.connected = true;
     socketProvider.subscription = socketProvider.client.listen(null);
+    socketProvider.subscription.onDone(() async => await disconnectFromServer(context));
+    socketProvider.subscription.onError((e) async => await disconnectFromServer(context));
     return true;
   } on SocketException {
     return false;

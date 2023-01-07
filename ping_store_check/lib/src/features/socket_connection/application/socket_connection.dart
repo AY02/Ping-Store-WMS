@@ -13,7 +13,9 @@ Future<bool> connectToServer(BuildContext context, String ip, int port) async {
     Timer.periodic(const Duration(seconds: 5), (timer) {
       if(socketProvider.connected) {
         socketProvider.client.write('!ping');
-      }
+      } else {
+				timer.cancel();
+			}
     });
     return true;
   } on SocketException {

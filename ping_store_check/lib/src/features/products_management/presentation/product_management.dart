@@ -36,8 +36,10 @@ class MyProductManagement extends StatelessWidget {
       final prefs = await SharedPreferences.getInstance();
       String ip = prefs.getString('ip') ?? '';
       String port = prefs.getString('port') ?? '';
-      // ignore: use_build_context_synchronously
-      await connectToServer(context, ip, int.parse(port));
+      if(port.isNotEmpty && ip.isNotEmpty) {
+        // ignore: use_build_context_synchronously
+        await connectToServer(context, ip, int.parse(port));
+      }
       return;
     }
     String barcode = await scanBarcodeNormal();

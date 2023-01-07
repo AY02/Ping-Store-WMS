@@ -11,8 +11,8 @@ class SocketProvider with ChangeNotifier {
   
   bool get connected => _connected;
 
-  set connected(bool _) {
-    _connected = _;
+  set connected(bool connected) {
+    _connected = connected;
     notifyListeners();
   }
   

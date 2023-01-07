@@ -51,9 +51,6 @@ def find_process(name):
             return True
     return False
 
-def kill_process(pid):
-    psutil.Process(pid).terminate()
-
 def get_barcode(record):
 	return record.split(';')[0].strip()
 
@@ -121,8 +118,6 @@ def multi_thread_conn(conn, addr):
         if not MESSAGE: break
         MESSAGE = MESSAGE.decode('utf-8')
         print(f'N_THREADS: {N_THREAD} -{addr}: {MESSAGE}')
-        if MESSAGE == COMMANDS['ping']:
-            print('Ping ricevuto')
         if MESSAGE == COMMANDS['quit_server']:
             print('Chiusura del socket...')
             SOCKET.close()
@@ -159,7 +154,7 @@ def multi_thread_conn(conn, addr):
                 conn.send(COMMANDS['success'].encode('utf-8'))
             else:
                 print('Record non trovato')
-                conn.send(COMMANDS['failure'].encode('utf-8'))
+                conn.send('Record not found'.encode('utf-8'))
         if MESSAGE.startswith(COMMANDS['find']):
             barcode = MESSAGE[6:]
             with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
@@ -172,7 +167,7 @@ def multi_thread_conn(conn, addr):
                 conn.send(found_record.encode('utf-8'))
             else:
                 print('Record non trovato')
-                conn.send(COMMANDS['failure'].encode('utf-8'))
+                conn.send('Record not found'.encode('utf-8'))
         if MESSAGE.startswith(COMMANDS['delete']+' '):
             barcode = MESSAGE[8:]
             with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
@@ -192,7 +187,7 @@ def multi_thread_conn(conn, addr):
                 conn.send(COMMANDS['success'].encode('utf-8'))
             else:
                 print('Record non trovato')
-                conn.send(COMMANDS['failure'].encode('utf-8'))
+                conn.send('Record not found'.encode('utf-8'))
         if MESSAGE == COMMANDS['show_duplicate']:
             with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
                 records = f.readlines()
@@ -204,7 +199,7 @@ def multi_thread_conn(conn, addr):
                 conn.send(json.dumps(repeated_records).encode('utf-8'))
             else:
                 print('Non ci sono duplicati')
-                conn.send(json.dumps([COMMANDS['failure']]).encode('utf-8'))
+                conn.send(json.dumps(['No results found']).encode('utf-8'))
         if MESSAGE == COMMANDS['delete_duplicate']:
             with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
                 records = f.readlines()
@@ -230,7 +225,7 @@ def multi_thread_conn(conn, addr):
                 conn.send(COMMANDS['success'].encode('utf-8'))
             else:
                 print('Non ci sono duplicati')
-                conn.send(COMMANDS['failure'].encode('utf-8'))
+                conn.send('No results found'.encode('utf-8'))
         if MESSAGE == COMMANDS['backup']:
             print('Backup in corso...')
             shutil.copyfile(FILENAME_DEFAULT, BACKUP_FILENAME)

@@ -65,16 +65,9 @@ class _MySocketFormState extends State<MySocketForm> {
             controller: portController,
           ),
           ElevatedButton(
-            onPressed: connected ? () async => await disconnectFromServer(context) : () async {
-              bool success = await connectToServer(
-                context,
-                ipController.text,
-                int.parse(portController.text),
-              );
-              if(success) {
-                await _saveSocketData();
-              }
-            },
+            onPressed: connected ? () async => await disconnectFromServer(context) : () async =>
+              await connectToServer(context, ipController.text, int.parse(portController.text))
+              .then((success) async => (success) ? await _saveSocketData() : null),
             child: Text(connected ? 'Disconnect' : 'Connect'),
           ),
           Text(connected ? 'Connected' : 'Not connected'),

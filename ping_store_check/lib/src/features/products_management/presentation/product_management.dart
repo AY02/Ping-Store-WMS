@@ -28,6 +28,53 @@ class MyProductManagement extends StatelessWidget {
     }
   }
 
+  Future<void> pressedFunction(BuildContext context, String util) async {
+    var socketProvider =  context.read<SocketProvider>();
+    if(!socketProvider.connected) return;
+    String barcode = await scanBarcodeNormal();
+    if(barcode.isEmpty) return;
+    if(util == 'ADD') {
+      socketProvider.subscription.onData((data) async => await showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          child: Text(utf8.decode(data)),
+        ),
+      ));
+      await showDialog(context: context,
+        builder: (context) => Dialog(child: MySendForm(barcode: barcode)),
+      );
+    } else if(util == 'EDIT') {
+      socketProvider.subscription.onData((data) async {
+        if(utf8.decode(data) == 'Record not found') {
+          await showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              child: Text(utf8.decode(data)),
+            ),
+          );
+        } else {
+          List<String> foundRecord = utf8.decode(data).split(';');
+          await showDialog(context: context,
+            builder: (context) => Dialog(child: MyEditForm(foundRecord: foundRecord))
+          );
+        }
+      });
+      socketProvider.client.write('!find $barcode');
+    } else if(util == 'SEARCH') {
+      socketProvider.subscription.onData((data) async => await showDialog(
+        context: context,
+        builder: (context) => Dialog(child: Text(utf8.decode(data))),
+      ));
+      socketProvider.client.write('!find $barcode');
+    } else if(util == 'DELETE') {
+      socketProvider.subscription.onData((data) async => await showDialog(
+        context: context,
+        builder: (context) => Dialog(child: Text(utf8.decode(data))),
+      ));
+      socketProvider.client.write('!delete $barcode');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GridView.count(
@@ -40,77 +87,22 @@ class MyProductManagement extends StatelessWidget {
       crossAxisSpacing: widthPercentage(context, 6),
       children: [
         ElevatedButton.icon(
-          onPressed: () async {
-            var socketProvider =  context.read<SocketProvider>();
-            if(!socketProvider.connected) return;
-            String barcode = await scanBarcodeNormal();
-            if(barcode.isEmpty) return;
-            socketProvider.subscription.onData((data) async => await showDialog(
-              context: context,
-              builder: (context) => Dialog(
-                child: Text(utf8.decode(data)),
-              ),
-            ));
-            await showDialog(context: context,
-              builder: (context) => Dialog(child: MySendForm(barcode: barcode)),
-            );
-          },
+          onPressed: () async => await pressedFunction(context, 'ADD'),
           icon: const Icon(Icons.add),
           label: const Text('ADD'),
         ),
         ElevatedButton.icon(
-          onPressed: () async {
-            var socketProvider =  context.read<SocketProvider>();
-            if(!socketProvider.connected) return;
-            String barcode = await scanBarcodeNormal();
-            if(barcode.isEmpty) return;
-            socketProvider.subscription.onData((data) async {
-              if(utf8.decode(data) == '!failure') {
-                await showDialog(
-                  context: context,
-                  builder: (context) => Dialog(
-                    child: Text(utf8.decode(data)),
-                  ),
-                );
-              } else {
-                List<String> foundRecord = utf8.decode(data).split(';');
-                await showDialog(context: context,
-                  builder: (context) => Dialog(child: MyEditForm(foundRecord: foundRecord))
-                );
-              }
-            });
-            socketProvider.client.write('!find $barcode');
-          },
+          onPressed: () async => await pressedFunction(context, 'EDIT'),
           icon: const Icon(Icons.edit),
           label: const Text('EDIT'),
         ),
         ElevatedButton.icon(
-          onPressed: () async {
-            var socketProvider =  context.read<SocketProvider>();
-            if(!socketProvider.connected) return;
-            String barcode = await scanBarcodeNormal();
-            if(barcode.isEmpty) return;
-            socketProvider.subscription.onData((data) async => await showDialog(
-              context: context,
-              builder: (context) => Dialog(child: Text(utf8.decode(data))),
-            ));
-            socketProvider.client.write('!find $barcode');
-          },
+          onPressed: () async => await pressedFunction(context, 'SEARCH'),
           icon: const Icon(Icons.search),
           label: const Text('SEARCH'),
         ),
         ElevatedButton.icon(
-          onPressed: () async {
-            var socketProvider =  context.read<SocketProvider>();
-            if(!socketProvider.connected) return;
-            String barcode = await scanBarcodeNormal();
-            if(barcode.isEmpty) return;
-            socketProvider.subscription.onData((data) async => await showDialog(
-              context: context,
-              builder: (context) => Dialog(child: Text(utf8.decode(data))),
-            ));
-            socketProvider.client.write('!delete $barcode');
-          },
+          onPressed: () async => await pressedFunction(context, 'DELETE'),
           icon: const Icon(Icons.delete),
           label: const Text('DELETE'),
         ),

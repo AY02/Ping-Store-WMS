@@ -20,7 +20,7 @@ class MyDatabaseControl extends StatelessWidget {
             return Dialog(
               child: ListView.builder(
                 itemCount: records.length,
-                itemBuilder: (BuildContext context, int index) => Text(records[index])
+                itemBuilder: (BuildContext context, int index) => Text(records[index]),
               )
             );
           } else {

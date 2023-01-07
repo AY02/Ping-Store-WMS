@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:ping_store_check/src/features/socket_connection/domain/socket_provider.dart';
@@ -9,6 +10,11 @@ Future<bool> connectToServer(BuildContext context, String ip, int port) async {
     socketProvider.client = await Socket.connect(ip, port);
     socketProvider.connected = true;
     socketProvider.subscription = socketProvider.client.listen(((event) {}));
+    Timer.periodic(const Duration(seconds: 5), (timer) {
+      if(socketProvider.connected) {
+        socketProvider.client.write('!ping');
+      }
+    });
     return true;
   } on SocketException {
     return false;

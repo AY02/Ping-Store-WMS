@@ -35,6 +35,8 @@ COMMANDS = {
     'backup': '!backup',
     'update_database': '!update_database',
 
+    'ping': '!ping',
+
 }
 
 def get_process(name):
@@ -119,6 +121,8 @@ def multi_thread_conn(conn, addr):
         if not MESSAGE: break
         MESSAGE = MESSAGE.decode('utf-8')
         print(f'N_THREADS: {N_THREAD} -{addr}: {MESSAGE}')
+        if MESSAGE == COMMANDS['ping']:
+            print('Ping ricevuto')
         if MESSAGE == COMMANDS['quit_server']:
             print('Chiusura del socket...')
             SOCKET.close()

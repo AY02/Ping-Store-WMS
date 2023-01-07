@@ -14,7 +14,7 @@ Future<bool> connectToServer(BuildContext context, String ip, int port) async {
       if(socketProvider.connected) {
         socketProvider.client.write('!ping');
       } else {
-				timer.cancel();
+			  timer.cancel();
 			}
     });
     return true;

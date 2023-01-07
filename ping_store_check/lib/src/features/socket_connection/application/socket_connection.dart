@@ -9,12 +9,7 @@ Future<bool> connectToServer(BuildContext context, String ip, int port) async {
     var socketProvider =  context.read<SocketProvider>();
     socketProvider.client = await Socket.connect(ip, port);
     socketProvider.connected = true;
-    socketProvider.subscription = socketProvider.client.listen(
-      null,
-      onDone: () async => await disconnectFromServer(context).then((_) async => 
-        await connectToServer(context, ip, port)
-      ),
-    );
+    socketProvider.subscription = socketProvider.client.listen(null);
     return true;
   } on SocketException {
     return false;

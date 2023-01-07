@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:ping_store_check/src/features/socket_connection/application/socket_connection.dart';
 import 'package:ping_store_check/utils.dart';
 import 'package:ping_store_check/src/features/socket_connection/domain/socket_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class MyDatabaseControl extends StatelessWidget {
@@ -10,7 +12,14 @@ class MyDatabaseControl extends StatelessWidget {
 
   Future<void> _onPressed(BuildContext context, String command) async {
     var socketProvider =  context.read<SocketProvider>();
-    if(!socketProvider.connected) return;
+    if(!socketProvider.connected) {
+      final prefs = await SharedPreferences.getInstance();
+      String ip = prefs.getString('ip') ?? '';
+      String port = prefs.getString('port') ?? '';
+      // ignore: use_build_context_synchronously
+      await connectToServer(context, ip, int.parse(port));
+      return;
+    }
     socketProvider.subscription.onData((data) async {
       await showDialog(
         context: context,

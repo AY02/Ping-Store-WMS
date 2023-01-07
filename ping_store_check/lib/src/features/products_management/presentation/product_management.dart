@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
 import 'package:ping_store_check/src/features/products_management/presentation/components/edit_form.dart';
 import 'package:ping_store_check/src/features/products_management/presentation/components/send_form.dart';
+import 'package:ping_store_check/src/features/socket_connection/application/socket_connection.dart';
 import 'package:ping_store_check/src/features/socket_connection/domain/socket_provider.dart';
 import 'package:ping_store_check/utils.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 class MyProductManagement extends StatelessWidget {
@@ -30,7 +32,14 @@ class MyProductManagement extends StatelessWidget {
 
   Future<void> pressedFunction(BuildContext context, String util) async {
     var socketProvider =  context.read<SocketProvider>();
-    if(!socketProvider.connected) return;
+    if(!socketProvider.connected) {
+      final prefs = await SharedPreferences.getInstance();
+      String ip = prefs.getString('ip') ?? '';
+      String port = prefs.getString('port') ?? '';
+      // ignore: use_build_context_synchronously
+      await connectToServer(context, ip, int.parse(port));
+      return;
+    }
     String barcode = await scanBarcodeNormal();
     if(barcode.isEmpty) return;
     if(util == 'ADD') {

@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ping_store_check/src/features/products_management/domain/product_domain.dart';
-import 'package:ping_store_check/src/features/socket_connection/domain/socket_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:ping_store_check/src/features/socket_connection/data/socket_data.dart';
 
 class MyEditForm extends StatefulWidget {
   const MyEditForm({super.key, required this.foundRecord});
@@ -56,14 +55,13 @@ class _MyEditFormState extends State<MyEditForm> {
                   record += ';';
                 }
               }
-              var socketProvider =  context.read<SocketProvider>();
-              socketProvider.subscription.onData((data) async => await showDialog(
+              subscription.onData((data) async => await showDialog(
                 context: context,
                 builder: (context) => Dialog(
                   child: Text(utf8.decode(data)),
                 ),
               ));
-              socketProvider.client.write('!edit ${_controllers[0].text} $record');
+              client.write('!edit ${_controllers[0].text} $record');
               Navigator.pop(context);
             },
             child: const Text('Edit'),

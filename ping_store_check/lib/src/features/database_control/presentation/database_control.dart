@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:ping_store_check/src/features/socket_connection/application/socket_connection.dart';
+import 'package:ping_store_check/src/features/socket_connection/data/socket_data.dart';
 import 'package:ping_store_check/utils.dart';
 import 'package:ping_store_check/src/features/socket_connection/domain/socket_provider.dart';
 import 'package:provider/provider.dart';
@@ -22,7 +23,7 @@ class MyDatabaseControl extends StatelessWidget {
       }
       return;
     }
-    socketProvider.subscription.onData((data) async {
+    subscription.onData((data) async {
       await showDialog(
         context: context,
         builder: (context) {
@@ -42,11 +43,12 @@ class MyDatabaseControl extends StatelessWidget {
         }
       );
     });
-    socketProvider.client.write(command);
+    client.write(command);
   }
 
   @override
   Widget build(BuildContext context) {
+    subscription.onDone(() async => await disconnectFromServer(context));
     return GridView.count(
       padding: EdgeInsets.symmetric(
         vertical: heigthPercentage(context, 6),

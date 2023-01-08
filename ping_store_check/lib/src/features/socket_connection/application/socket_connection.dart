@@ -1,27 +1,31 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:ping_store_check/src/features/socket_connection/data/socket_data.dart';
 import 'package:ping_store_check/src/features/socket_connection/domain/socket_provider.dart';
 import 'package:provider/provider.dart';
 
 Future<bool> connectToServer(BuildContext context, String ip, int port) async {
   try {
     var socketProvider =  context.read<SocketProvider>();
-    socketProvider.client = await Socket.connect(ip, port);
+    client = await Socket.connect(ip, port);
     socketProvider.connected = true;
-    socketProvider.subscription = socketProvider.client.listen(null);
-    socketProvider.subscription.onDone(() async => await disconnectFromServer(context));
-    socketProvider.subscription.onError((e) async => await disconnectFromServer(context));
+    subscription = client.listen(null);
+    subscription.onDone(() async => await disconnectFromServer(context));
     return true;
-  } on SocketException {
+  } catch(e) {
     return false;
   }
 }
 
 Future<void> disconnectFromServer(BuildContext context) async {
-  var socketProvider =  context.read<SocketProvider>();
-  await socketProvider.subscription.cancel();
-  await socketProvider.client.close();
-  socketProvider.client.destroy();
-  socketProvider.connected = false;
+  try {
+    var socketProvider =  context.read<SocketProvider>();
+    await subscription.cancel();
+    await client.close();
+    client.destroy();
+    socketProvider.connected = false;
+  } catch(e) {
+    return;
+  }
 }

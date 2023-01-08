@@ -1,4 +1,4 @@
-import os
+import os, errno
 import socket, argparse
 from collections import Counter
 import json
@@ -114,7 +114,11 @@ def find_record(records, barcode):
 def multi_thread_conn(conn, addr):
     global SOCKET, MESSAGE, N_THREAD
     while True:
-        MESSAGE = conn.recv(2048)
+        try:
+            MESSAGE = conn.recv(2048)
+        except ConnectionResetError:
+            print('Sessione scaduta')
+            break
         if not MESSAGE: break
         MESSAGE = MESSAGE.decode('utf-8')
         print(f'N_THREADS: {N_THREAD} -{addr}: {MESSAGE}')

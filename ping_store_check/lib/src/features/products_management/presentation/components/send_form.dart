@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ping_store_check/src/features/products_management/domain/product_domain.dart';
-import 'package:ping_store_check/src/features/socket_connection/domain/socket_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:ping_store_check/src/features/socket_connection/data/socket_data.dart';
 
 class MySendForm extends StatefulWidget {
   const MySendForm({super.key, required this.barcode});
@@ -58,7 +57,7 @@ class _MySendFormState extends State<MySendForm> {
                   record += ';';
                 }
               }
-              context.read<SocketProvider>().client.write('!add $record');
+              client.write('!add $record');
               Navigator.pop(context);
             },
             child: const Text('Send'),

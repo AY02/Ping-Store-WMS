@@ -89,7 +89,10 @@ class MyProductManagement extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    subscription.onDone(() async => await disconnectFromServer(context));
+    try {
+      subscription.onDone(() async => await disconnectFromServer(context));
+    // ignore: empty_catches
+    } catch(e) {}
     return GridView.count(
       padding: EdgeInsets.symmetric(
         vertical: heigthPercentage(context, 6),

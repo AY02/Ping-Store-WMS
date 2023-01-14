@@ -18,17 +18,19 @@ BACKUP_FILENAME = 'backup.csv'
 UPDATE_FILENAME = 'update.csv'
 MESSAGE = ''
 N_THREAD = 0
+LOGS = {
+    'success': '!success',
+    'failure': '!failure',
+    'not_found': '!not_found',
+}
 COMMANDS = {
 
     'quit_server': '!quit_server',
 
-    'success': '!success',
-    'failure': '!failure',
-
     'add': '!add',
     'edit': '!edit',
     'find': '!find',
-    'delete': '!delete',
+    'remove': '!remove',
 
     'show_duplicate': '!show_duplicate',
     'delete_duplicate': '!delete_duplicate',
@@ -136,7 +138,7 @@ def multi_thread_conn(conn, addr):
             with open(UPDATE_FILENAME, mode='a+', encoding='utf-8') as f:
                 f.write(MESSAGE[5:]+'\n')
             print('Record inserito')
-            conn.send(COMMANDS['success'].encode('utf-8'))
+            conn.send(LOGS['success'].encode('utf-8'))
         if MESSAGE.startswith(COMMANDS['edit']):
             fields = MESSAGE.split(' ', 2)
             barcode = fields[1]
@@ -155,10 +157,10 @@ def multi_thread_conn(conn, addr):
                 with open(FILENAME_DEFAULT, mode='w', encoding='utf-8') as f:
                     f.writelines(records)
                 print('Modifica effettuata')
-                conn.send(COMMANDS['success'].encode('utf-8'))
+                conn.send(LOGS['success'].encode('utf-8'))
             else:
                 print('Record non trovato')
-                conn.send('Record not found'.encode('utf-8'))
+                conn.send(LOGS['not_found'].encode('utf-8'))
         if MESSAGE.startswith(COMMANDS['find']):
             barcode = MESSAGE[6:]
             with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
@@ -171,8 +173,8 @@ def multi_thread_conn(conn, addr):
                 conn.send(found_record.encode('utf-8'))
             else:
                 print('Record non trovato')
-                conn.send('Record not found'.encode('utf-8'))
-        if MESSAGE.startswith(COMMANDS['delete']+' '):
+                conn.send(LOGS['not_found'].encode('utf-8'))
+        if MESSAGE.startswith(COMMANDS['remove']):
             barcode = MESSAGE[8:]
             with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
                 records = f.readlines()
@@ -188,10 +190,10 @@ def multi_thread_conn(conn, addr):
                 with open(FILENAME_DEFAULT, mode='w', encoding='utf-8') as f:
                     f.writelines(records)
                 print('Record cancellato')
-                conn.send(COMMANDS['success'].encode('utf-8'))
+                conn.send(LOGS['success'].encode('utf-8'))
             else:
                 print('Record non trovato')
-                conn.send('Record not found'.encode('utf-8'))
+                conn.send(LOGS['not_found'].encode('utf-8'))
         if MESSAGE == COMMANDS['show_duplicate']:
             with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
                 records = f.readlines()
@@ -203,7 +205,7 @@ def multi_thread_conn(conn, addr):
                 conn.send(json.dumps(repeated_records).encode('utf-8'))
             else:
                 print('Non ci sono duplicati')
-                conn.send(json.dumps(['No results found']).encode('utf-8'))
+                conn.send(LOGS['not_found'].encode('utf-8'))
         if MESSAGE == COMMANDS['delete_duplicate']:
             with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
                 records = f.readlines()
@@ -226,15 +228,15 @@ def multi_thread_conn(conn, addr):
                             barcodes_seen.append(barcode)
                             f.write(record)
                 print('Duplicati eliminati')
-                conn.send(COMMANDS['success'].encode('utf-8'))
+                conn.send(LOGS['success'].encode('utf-8'))
             else:
                 print('Non ci sono duplicati')
-                conn.send('No results found'.encode('utf-8'))
+                conn.send(LOGS['not_found'].encode('utf-8'))
         if MESSAGE == COMMANDS['backup']:
             print('Backup in corso...')
             shutil.copyfile(FILENAME_DEFAULT, BACKUP_FILENAME)
             print('Backup eseguito')
-            conn.send(COMMANDS['success'].encode('utf-8'))
+            conn.send(LOGS['success'].encode('utf-8'))
         if MESSAGE == COMMANDS['update_database']:
             print('Aggiornamento del database...')
             process_name = 'menu.exe'
@@ -249,7 +251,7 @@ def multi_thread_conn(conn, addr):
             pag.click(211, 680)
             pag.click(400, 669)
             print('Database aggiornato')
-            conn.send(COMMANDS['success'].encode('utf-8'))
+            conn.send(LOGS['success'].encode('utf-8'))
     
     print('Chiusura connessione...')
     conn.close()

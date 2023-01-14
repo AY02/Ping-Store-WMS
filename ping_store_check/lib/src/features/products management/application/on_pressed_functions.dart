@@ -72,7 +72,6 @@ Future<void> onDelete(BuildContext context) async {
 }
 
 Future<void> onSendRecord(BuildContext context, bool mode, List<TextEditingController> controllers) async {
-  Navigator.pop(context);
   String record;
   if(mode == addMode) {
     record = '${List.generate(fields.length, (i) => controllers[i].text).join(';')};';
@@ -80,6 +79,7 @@ Future<void> onSendRecord(BuildContext context, bool mode, List<TextEditingContr
       context: context,
       msg: '${commands['add']} $record',
       onData: (data) async {
+        Navigator.pop(context);
         String response = utf8.decode(data);
         if(response == logs['success']) {
           await myShowDialogLog(
@@ -98,6 +98,7 @@ Future<void> onSendRecord(BuildContext context, bool mode, List<TextEditingContr
       context: context,
       msg: '${commands['edit']} ${controllers[0].text} $record',
       onData: (data) async {
+        Navigator.pop(context);
         String response = utf8.decode(data);
         if(response == logs['success']) {
           await myShowDialogLog(
@@ -116,12 +117,12 @@ Future<void> onSendRecord(BuildContext context, bool mode, List<TextEditingContr
 }
 
 Future<void> onSendBarcode(BuildContext context, bool mode, String barcode) async {
-  Navigator.pop(context);
   if(mode == searchMode) {
     await sendTo(
       context: context,
       msg: '${commands['find']} $barcode',
       onData: (data) async {
+        Navigator.pop(context);
         String response = utf8.decode(data);
         if(response == logs['not_found']) {
           await myShowDialogLog(
@@ -141,6 +142,7 @@ Future<void> onSendBarcode(BuildContext context, bool mode, String barcode) asyn
       context: context,
       msg: '${commands['remove']} $barcode',
       onData: (data) async {
+        Navigator.pop(context);
         String response = utf8.decode(data);
         if(response == logs['not_found']) {
           await myShowDialogLog(

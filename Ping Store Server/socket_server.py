@@ -1,6 +1,5 @@
-import os, errno
+import os
 import socket, argparse
-from collections import Counter
 import json
 import shutil
 import pyautogui as pag

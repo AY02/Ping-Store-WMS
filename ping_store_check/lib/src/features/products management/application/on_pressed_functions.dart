@@ -74,7 +74,7 @@ Future<void> onDelete(BuildContext context) async {
 Future<void> onSendRecord(BuildContext context, bool mode, List<TextEditingController> controllers) async {
   String record;
   if(mode == addMode) {
-    record = '${List.generate(fields.length, (i) => controllers[i].text).join(';')};';
+    record = List.generate(fields.length, (i) => controllers[i].text).join(';');
     await sendTo(
       context: context,
       msg: '${commands['add']} $record',

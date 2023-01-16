@@ -16,8 +16,9 @@ PORT_DEFAULT = 10000
 FILENAME_DEFAULT = 'import.csv'
 BACKUP_FILENAME = 'backup.csv'
 UPDATE_FILENAME = 'update.csv'
-MESSAGE = ''
+
 N_THREAD = 0
+
 LOGS = {
     'success': '!success',
     'failure': '!failure',
@@ -37,8 +38,6 @@ COMMANDS = {
     'backup': '!backup',
     'update_database': '!update_database',
 
-    'ping': '!ping',
-
 }
 
 def get_process(name):
@@ -47,211 +46,190 @@ def get_process(name):
             return proc
     return None
 
-def find_process(name):
-    for proc in psutil.process_iter():
-        if proc.name() == name:
-            return True
-    return False
+def get_merged_record(record):
+    return ';'.join(record)
 
-def get_barcode(record):
-	return record.split(';')[0].strip()
+def get_merged_records(records):
+    return [get_merged_record(record) for record in records]
 
-def get_price(record):
-    if record.split(';')[7] == '':
-        return 0.00
-    return float(record.split(';')[7].strip())
+def get_splitted_record(record):
+    return record.split(';')
 
-def get_barcodes(records):
-	return [get_barcode(record) for record in records]
-
-def get_repeated_barcodes(barcodes):
-	return [barcode for barcode, n in Counter(barcodes).items() if n > 1]
-
-def get_unique_barcodes(barcodes):
-	seen_barcodes = []
-	for barcode in barcodes:
-		if barcode not in seen_barcodes:
-			seen_barcodes.append(barcode)
-	return seen_barcodes
+def get_splitted_records(records):
+    return [get_splitted_record(record) for record in records]
 
 def get_repeated_records(records):
-	barcodes = get_barcodes(records)
-	repeated_barcodes = get_repeated_barcodes(barcodes)
-	repeated_records = [records[i] for i in range(len(records)) if barcodes[i] in repeated_barcodes]
-	return repeated_records
-
-def get_max_price(records):
-	max_price = 0
-	for record in records:
-		if get_price(record) > max_price:
-			max_price = get_price(record)
-	return max_price
+    records = get_splitted_records(records)
+    barcodes_count = {}
+    for record in records:
+        if record[0] in barcodes_count.keys():
+            barcodes_count[record[0]] += 1
+        else:
+            barcodes_count[record[0]] = 1
+    repeated_records = []
+    for record in records:
+        if barcodes_count[record[0]] > 1:
+            repeated_records.append(record)
+    repeated_records = get_merged_records(repeated_records)
+    return repeated_records
 
 def get_unique_records(records):
-	repeated_records = get_repeated_records(records)
-	repeated_barcodes = get_barcodes(repeated_records)
-	unique_barcodes = get_unique_barcodes(repeated_barcodes)
-	unique_records = []
-	for unique_barcode in unique_barcodes:
-		tmp_records = [record for record in repeated_records if get_barcode(record) == unique_barcode]
-		max_price = get_max_price(tmp_records)
-		for tmp_record in tmp_records:
-			if get_price(tmp_record) == max_price:
-				unique_records.append(tmp_record)
-				break
-	return unique_records
+    records = get_splitted_records(records)
+    unique_records = {}
+    for record in records:
+        if record[0] not in unique_records.keys():
+            unique_records[record[0]] = record
+        else:
+            if float(unique_records[record[0]][7]) < float(record[7]):
+                unique_records[record[0]] = record
+    unique_records = get_merged_records(unique_records.values())
+    return unique_records
+
+def write_file(filename, records):
+    with open(filename, mode='w', encoding='utf-8') as f:
+        f.writelines(records)
 
 def get_record_by_barcode(records, barcode):
     for record in records:
-        if barcode == get_barcode(record):
+        if barcode == get_splitted_record(record)[0]:
             return record
     return None
 
-def find_record(records, barcode):
-    for record in records:
-        if barcode == get_barcode(record):
-            return True
-    return False
+def append_record_to_file(filename, record):
+    print(f'Inserimento record su {filename}...')
+    with open(filename, mode='a+', encoding='utf-8') as f:
+        f.write(record)
+    print('Record inserito')
+
+def read_file(filename):
+    with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
+        return f.readlines()
+
+def quit_server():
+    print('Chiusura del socket...')
+    SOCKET.close()
+    print('Socket chiuso')
+    os._exit(0)
+
+def on_add(conn, message):
+    record = message[5:] + '\n'
+    append_record_to_file(FILENAME_DEFAULT, record)
+    append_record_to_file(UPDATE_FILENAME, record)
+    conn.send(LOGS['success'].encode('utf-8'))
+
+def on_edit(conn, message):
+    barcode, new_record = message.split(' ', 2)[1:]
+    records = read_file(FILENAME_DEFAULT)
+    print(f'Modifica del record {barcode}...')
+    for i in range(len(records)):
+        if barcode == get_splitted_record(records[i])[0]:
+            records[i] = new_record
+            break
+    write_file(FILENAME_DEFAULT, records)
+    print('Modifica effettuata')
+    conn.send(LOGS['success'].encode('utf-8'))
+
+def on_find(conn, message):
+    barcode = message[6:]
+    records = read_file(FILENAME_DEFAULT)
+    print(f'Ricerca del record {barcode}...')
+    record = get_record_by_barcode(records, barcode)
+    if record:
+        print(f'Record trovato: {record[:-1]}')
+        print('Invio del record...')
+        conn.send(record.encode('utf-8'))
+        print('Record inviato')
+    else:
+        print('Record non trovato')
+        conn.send(LOGS['not_found'].encode('utf-8'))
+
+def on_delete(conn, message):
+    barcode = message[8:]
+    records = read_file(FILENAME_DEFAULT)
+    print(f'Ricerca del record {barcode}...')
+    record = get_record_by_barcode(records, barcode)
+    if record:
+        print(f'Record trovato: {record[:-1]}')
+        print(f'Cancellazione del record {barcode}...')
+        for i in range(len(records)):
+            if barcode == get_splitted_record(records[i])[0]:
+                records.pop(i)
+                break
+        write_file(FILENAME_DEFAULT, records)
+        print('Record cancellato')
+        conn.send(LOGS['success'].encode('utf-8'))
+    else:
+        print('Record non trovato')
+        conn.send(LOGS['not_found'].encode('utf-8'))
+
+def on_show_duplicate(conn):
+    records = read_file(FILENAME_DEFAULT)
+    print('Ricerca dei duplicati...')
+    repeated_records = get_repeated_records(records)
+    if repeated_records:
+        repeated_records.sort()
+        print(f'Duplicati trovati: {repeated_records}')
+        conn.send(json.dumps(repeated_records).encode('utf-8'))
+    else:
+        print('Non ci sono duplicati')
+        conn.send(LOGS['not_found'].encode('utf-8'))
+
+def on_delete_duplicate(conn):
+    records = read_file(FILENAME_DEFAULT)
+    print('Ricerca dei duplicati...')
+    repeated_records = get_repeated_records(records)
+    if repeated_records:
+        repeated_records.sort()
+        print(f'Duplicati trovati: {repeated_records}')
+        print('Eliminazione dei duplicati...')
+        unique_records = get_unique_records(records)
+        write_file(FILENAME_DEFAULT, unique_records)
+        print('Duplicati eliminati')
+        conn.send(LOGS['success'].encode('utf-8'))
+    else:
+        print('Non ci sono duplicati')
+        conn.send(LOGS['not_found'].encode('utf-8'))
+
+def on_backup(conn):
+    print('Backup in corso...')
+    shutil.copyfile(FILENAME_DEFAULT, BACKUP_FILENAME)
+    print('Backup eseguito')
+    conn.send(LOGS['success'].encode('utf-8'))
+
+def on_update_database(conn):
+    print('Aggiornamento del database...')
+    process_name = 'menu.exe'
+    process = get_process(process_name)
+    if process: killProcess(process.pid)
+    pag.press('winleft')
+    pag.write('magaworld')
+    pag.press('enter')
+    pag.click(850, 600)
+    pag.click(210, 680)
+    pag.click(400, 670)
+    print('Database aggiornato')
+    conn.send(LOGS['success'].encode('utf-8'))
 
 def multi_thread_conn(conn, addr):
-    global SOCKET, MESSAGE, N_THREAD
+    global N_THREAD
     while True:
         try:
-            MESSAGE = conn.recv(2048)
+            message = conn.recv(2048)
         except ConnectionResetError:
             print('Sessione scaduta')
             break
-        if not MESSAGE: break
-        MESSAGE = MESSAGE.decode('utf-8')
-        print(f'N_THREADS: {N_THREAD} -{addr}: {MESSAGE}')
-        if MESSAGE == COMMANDS['quit_server']:
-            print('Chiusura del socket...')
-            SOCKET.close()
-            print('Socket chiuso')
-            os._exit(0)
-        if MESSAGE.startswith(COMMANDS['add']):
-            print(f'Inserimento record su {FILENAME_DEFAULT}...')
-            with open(FILENAME_DEFAULT, mode='a+', encoding='utf-8') as f:
-                f.write(MESSAGE[5:]+'\n')
-            print('Record inserito')
-            print(f'Inserimento record su {UPDATE_FILENAME}...')
-            with open(UPDATE_FILENAME, mode='a+', encoding='utf-8') as f:
-                f.write(MESSAGE[5:]+'\n')
-            print('Record inserito')
-            conn.send(LOGS['success'].encode('utf-8'))
-        if MESSAGE.startswith(COMMANDS['edit']):
-            fields = MESSAGE.split(' ', 2)
-            barcode = fields[1]
-            new_record = fields[2]
-            with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
-                records = f.readlines()
-            print(f'Ricerca del record {barcode}...')
-            found = find_record(records, barcode)
-            if found:
-                print('Record trovato')
-                print(f'Modifica del record {barcode}...')
-                for i in range(len(records)):
-                    if barcode == get_barcode(records[i]):
-                        records[i] = new_record
-                        break
-                with open(FILENAME_DEFAULT, mode='w', encoding='utf-8') as f:
-                    f.writelines(records)
-                print('Modifica effettuata')
-                conn.send(LOGS['success'].encode('utf-8'))
-            else:
-                print('Record non trovato')
-                conn.send(LOGS['not_found'].encode('utf-8'))
-        if MESSAGE.startswith(COMMANDS['find']):
-            barcode = MESSAGE[6:]
-            with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
-                records = f.readlines()
-            print(f'Ricerca del record {barcode}...')
-            found = find_record(records, barcode)
-            if found:
-                found_record = get_record_by_barcode(records, barcode)
-                print(f'Record trovato: {found_record[:-1]}')
-                conn.send(found_record.encode('utf-8'))
-            else:
-                print('Record non trovato')
-                conn.send(LOGS['not_found'].encode('utf-8'))
-        if MESSAGE.startswith(COMMANDS['remove']):
-            barcode = MESSAGE[8:]
-            with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
-                records = f.readlines()
-            print(f'Ricerca del record {barcode}...')
-            found = find_record(records, barcode)
-            if found:
-                print('Record trovato')
-                print(f'Cancellazione del record {barcode}...')
-                for i in range(len(records)):
-                    if barcode == get_barcode(records[i]):
-                        records.pop(i)
-                        break
-                with open(FILENAME_DEFAULT, mode='w', encoding='utf-8') as f:
-                    f.writelines(records)
-                print('Record cancellato')
-                conn.send(LOGS['success'].encode('utf-8'))
-            else:
-                print('Record non trovato')
-                conn.send(LOGS['not_found'].encode('utf-8'))
-        if MESSAGE == COMMANDS['show_duplicate']:
-            with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
-                records = f.readlines()
-            print('Ricerca dei duplicati...')
-            repeated_records = get_repeated_records(records)
-            if repeated_records:
-                repeated_records.sort()
-                print(f'Duplicati trovati: {repeated_records}')
-                conn.send(json.dumps(repeated_records).encode('utf-8'))
-            else:
-                print('Non ci sono duplicati')
-                conn.send(LOGS['not_found'].encode('utf-8'))
-        if MESSAGE == COMMANDS['delete_duplicate']:
-            with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
-                records = f.readlines()
-            print('Ricerca dei duplicati...')
-            repeated_records = get_repeated_records(records)
-            if repeated_records:
-                repeated_records.sort()
-                print(f'Duplicati trovati: {repeated_records}')
-                print('Eliminazione dei duplicati...')
-                barcodes = get_barcodes(repeated_records)
-                unique_barcodes = get_unique_barcodes(barcodes)
-                unique_records = get_unique_records(records)
-                with open(FILENAME_DEFAULT, 'w', encoding='utf-8') as f:
-                    for unique_record in unique_records:
-                        f.write(unique_record)
-                    barcodes_seen = get_barcodes(unique_records)
-                    for record in records:
-                        barcode = get_barcode(record)
-                        if barcode not in barcodes_seen:
-                            barcodes_seen.append(barcode)
-                            f.write(record)
-                print('Duplicati eliminati')
-                conn.send(LOGS['success'].encode('utf-8'))
-            else:
-                print('Non ci sono duplicati')
-                conn.send(LOGS['not_found'].encode('utf-8'))
-        if MESSAGE == COMMANDS['backup']:
-            print('Backup in corso...')
-            shutil.copyfile(FILENAME_DEFAULT, BACKUP_FILENAME)
-            print('Backup eseguito')
-            conn.send(LOGS['success'].encode('utf-8'))
-        if MESSAGE == COMMANDS['update_database']:
-            print('Aggiornamento del database...')
-            process_name = 'menu.exe'
-            found = find_process(process_name)
-            if found:
-                process = get_process(process_name)
-                killProcess(process.pid)
-            pag.press('winleft')
-            pag.write('magaworld')
-            pag.press('enter')
-            pag.click(850, 600)
-            pag.click(211, 680)
-            pag.click(400, 669)
-            print('Database aggiornato')
-            conn.send(LOGS['success'].encode('utf-8'))
+        if not message: break
+        message = message.decode('utf-8')
+        print(f'N_THREADS: {N_THREAD} -{addr}: {message.strip()}')
+        if message == COMMANDS['quit_server']: quit_server()
+        if message.startswith(COMMANDS['add']): on_add(conn, message)
+        if message.startswith(COMMANDS['edit']): on_edit(conn, message)
+        if message.startswith(COMMANDS['find']): on_find(conn, message)
+        if message.startswith(COMMANDS['remove']): on_delete(conn, message)
+        if message == COMMANDS['show_duplicate']: on_show_duplicate(conn)
+        if message == COMMANDS['delete_duplicate']: on_delete_duplicate(conn)
+        if message == COMMANDS['backup']: on_backup(conn)
+        if message == COMMANDS['update_database']: on_update_database(conn)
     
     print('Chiusura connessione...')
     conn.close()
@@ -262,7 +240,7 @@ def multi_thread_conn(conn, addr):
     return
 
 def main(host, port):
-    global SOCKET, MESSAGE, N_THREAD
+    global N_THREAD
     SOCKET.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     SOCKET.bind((host, port))
     print(f'In ascolto {host}:{port}...')
@@ -277,7 +255,7 @@ def main(host, port):
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Questo è un socket server tcp minimale.')
+    parser = argparse.ArgumentParser(description='Ping Store Server basato sui socket TCP.')
     parser.add_argument('-i', '--host', help='Host della macchina che stai usando attualmente.')
     parser.add_argument('-p', '--port', help='Porta su cui vuoi mettere in ascolto la macchina.')
 

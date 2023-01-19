@@ -102,7 +102,7 @@ def append_record_to_file(filename, record):
     print('Record inserito')
 
 def read_file(filename):
-    with open(FILENAME_DEFAULT, mode='r', encoding='utf-8') as f:
+    with open(filename, mode='r', encoding='utf-8') as f:
         return f.readlines()
 
 def quit_server():

@@ -14,7 +14,8 @@ PORT_DEFAULT = 10000
 
 FILENAME_DEFAULT = 'import.csv'
 BACKUP_FILENAME = 'backup.csv'
-UPDATE_FILENAME = 'update.csv'
+ADD_FILENAME = 'add.csv'
+EDIT_FILENAME = 'edit.csv'
 
 N_THREAD = 0
 
@@ -113,7 +114,7 @@ def quit_server():
 def on_add(conn, message):
     record = message[5:] + '\n'
     append_record_to_file(FILENAME_DEFAULT, record)
-    append_record_to_file(UPDATE_FILENAME, record)
+    append_record_to_file(ADD_FILENAME, record)
     conn.send(LOGS['success'].encode('utf-8'))
 
 def on_edit(conn, message):
@@ -125,6 +126,7 @@ def on_edit(conn, message):
             records[i] = new_record
             break
     write_file(FILENAME_DEFAULT, records)
+    append_record_to_file(EDIT_FILENAME, new_record)
     print('Modifica effettuata')
     conn.send(LOGS['success'].encode('utf-8'))
 

@@ -2,6 +2,7 @@ const Map<String, String> logs = {
   'success': '!success',
   'failure': '!failure',
   'not_found': '!not_found',
+  'ping': '!ping',
 };
 
 const Map<String, String> commands = {
@@ -28,3 +29,5 @@ const Map<String, String> commands = {
   'get_database_file': '!get_database_file',
 
 };
+
+const String defaultFilename = 'import.csv';

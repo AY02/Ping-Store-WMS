@@ -164,22 +164,21 @@ Future<void> onSendBarcode(BuildContext context, String mode, String barcode) as
       }
     );
   } else if(mode == searchLocallyMode) {
-    getApplicationDocumentsDirectory().then((dir) async {
-      File f = File('${dir.path}/import.csv');
-      if(!f.existsSync()) {
-        await myShowDialogLog(context: context, log: 'File does not exist');
+    Navigator.pop(context);
+    Directory? directory = await getExternalStorageDirectory();
+    File f = File('${directory!.path}/$defaultFilename');
+    if(!f.existsSync()) {
+      await myShowDialogLog(context: context, log: 'File does not exist');
+      return;
+    }
+    List<String> records = f.readAsLinesSync();
+    for(int i=0; i<records.length; i++) {
+      String tmpBarcode = records[i].split(';')[0];
+      if(barcode == tmpBarcode) {
+        await myShowDialogLog(context: context, log: records[i]);
         return;
       }
-      List<String> records = f.readAsLinesSync();
-      for(int i=0; i<records.length; i++) {
-        String tmpBarcode = records[i].split(';')[0];
-        if(barcode == tmpBarcode) {
-          await myShowDialogLog(context: context, log: records[i]);
-          return;
-        }
-      }
-      await myShowDialogLog(context: context, log: 'Record not found');
-    });
-    Navigator.pop(context);
+    }
+    await myShowDialogLog(context: context, log: 'Record not found');
   }
 }

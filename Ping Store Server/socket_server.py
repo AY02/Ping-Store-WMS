@@ -1,9 +1,6 @@
-import os
-import socket, argparse
-import json
-import shutil
+import os, socket, argparse
+import shutil, psutil
 import pyautogui as pag
-import psutil
 from _thread import *
 
 pag.PAUSE = 1
@@ -12,10 +9,14 @@ SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 HOST_DEFAULT = socket.gethostbyname(socket.gethostname())
 PORT_DEFAULT = 10000
 
-FILENAME_DEFAULT = 'import.csv'
+CHUNK_SIZE = 8192
+BUFFER_SIZE = 1024
+
+DEFAULT_FILENAME = 'import.csv'
 BACKUP_FILENAME = 'backup.csv'
 ADD_FILENAME = 'add.csv'
 EDIT_FILENAME = 'edit.csv'
+DUPLICATES_FILENAME = 'duplicates.csv'
 
 N_THREAD = 0
 
@@ -23,7 +24,9 @@ LOGS = {
     'success': '!success',
     'failure': '!failure',
     'not_found': '!not_found',
+    'ping': '!ping',
 }
+
 COMMANDS = {
 
     'quit_server': '!quit_server',
@@ -122,26 +125,26 @@ def quit_server():
 
 def on_add(conn, message):
     record = message[5:] + '\n'
-    append_record_to_file(FILENAME_DEFAULT, record)
+    append_record_to_file(DEFAULT_FILENAME, record)
     append_record_to_file(ADD_FILENAME, record)
     conn.send(LOGS['success'].encode('utf-8'))
 
 def on_edit(conn, message):
     barcode, new_record = message.split(' ', 2)[1:]
-    records = read_file(FILENAME_DEFAULT)
+    records = read_file(DEFAULT_FILENAME)
     print(f'Modifica del record {barcode}...')
     for i in range(len(records)):
         if barcode == get_splitted_record(records[i])[0]:
             records[i] = new_record
             break
-    write_file(FILENAME_DEFAULT, records)
+    write_file(DEFAULT_FILENAME, records)
     append_record_to_file(EDIT_FILENAME, new_record)
     print('Modifica effettuata')
     conn.send(LOGS['success'].encode('utf-8'))
 
 def on_find(conn, message):
     barcode = message[6:]
-    records = read_file(FILENAME_DEFAULT)
+    records = read_file(DEFAULT_FILENAME)
     print(f'Ricerca del record {barcode}...')
     record = get_record_by_barcode(records, barcode)
     if record:
@@ -155,7 +158,7 @@ def on_find(conn, message):
 
 def on_delete(conn, message):
     barcode = message[8:]
-    records = read_file(FILENAME_DEFAULT)
+    records = read_file(DEFAULT_FILENAME)
     print(f'Ricerca del record {barcode}...')
     record = get_record_by_barcode(records, barcode)
     if record:
@@ -165,7 +168,7 @@ def on_delete(conn, message):
             if barcode == get_splitted_record(records[i])[0]:
                 records.pop(i)
                 break
-        write_file(FILENAME_DEFAULT, records)
+        write_file(DEFAULT_FILENAME, records)
         print('Record cancellato')
         conn.send(LOGS['success'].encode('utf-8'))
     else:
@@ -173,19 +176,25 @@ def on_delete(conn, message):
         conn.send(LOGS['not_found'].encode('utf-8'))
 
 def on_show_duplicate(conn):
-    records = read_file(FILENAME_DEFAULT)
+    records = read_file(DEFAULT_FILENAME)
     print('Ricerca dei duplicati...')
     repeated_records = get_repeated_records(records)
     if repeated_records:
         repeated_records.sort()
         print(f'Duplicati trovati: {repeated_records}')
-        conn.send(json.dumps(repeated_records).encode('utf-8'))
+        write_file(DUPLICATES_FILENAME, repeated_records)
+        print('Invio i duplicati...')
+        for repeated_record in repeated_records:
+            conn.send(repeated_record.encode('utf-8'))
+            conn.recv(BUFFER_SIZE)
+        print('Duplicati inviati')
+        conn.send(LOGS['success'].encode('utf-8'))
     else:
         print('Non ci sono duplicati')
         conn.send(LOGS['not_found'].encode('utf-8'))
 
 def on_delete_duplicate(conn):
-    records = read_file(FILENAME_DEFAULT)
+    records = read_file(DEFAULT_FILENAME)
     print('Ricerca dei duplicati...')
     repeated_records = get_repeated_records(records)
     if repeated_records:
@@ -193,7 +202,7 @@ def on_delete_duplicate(conn):
         print(f'Duplicati trovati: {repeated_records}')
         print('Eliminazione dei duplicati...')
         unique_records = get_unique_records(records)
-        write_file(FILENAME_DEFAULT, unique_records)
+        write_file(DEFAULT_FILENAME, unique_records)
         print('Duplicati eliminati')
         conn.send(LOGS['success'].encode('utf-8'))
     else:
@@ -202,7 +211,7 @@ def on_delete_duplicate(conn):
 
 def on_backup(conn):
     print('Backup in corso...')
-    shutil.copyfile(FILENAME_DEFAULT, BACKUP_FILENAME)
+    shutil.copyfile(DEFAULT_FILENAME, BACKUP_FILENAME)
     print('Backup eseguito')
     conn.send(LOGS['success'].encode('utf-8'))
 
@@ -221,11 +230,15 @@ def on_update_database(conn):
     conn.send(LOGS['success'].encode('utf-8'))
 
 def on_get_database_file(conn):
-    print('Invio del file import.csv ...')
-    with open(FILENAME_DEFAULT, 'rb') as f:
-        data = f.read()
-        conn.sendall(data)
+    print(f'Invio del file {DEFAULT_FILENAME} ...')
+    with open(DEFAULT_FILENAME, 'rb') as f:
+        while True:
+            chunk = f.read(CHUNK_SIZE)
+            if not chunk: break
+            conn.send(chunk)
+            conn.recv(BUFFER_SIZE)
     print('File inviato')
+    conn.send(LOGS['success'].encode('utf-8'))
 
 def multi_thread_conn(conn, addr):
     global N_THREAD

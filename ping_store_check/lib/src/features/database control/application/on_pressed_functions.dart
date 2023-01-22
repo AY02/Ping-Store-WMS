@@ -7,13 +7,19 @@ import 'package:ping_store_check/src/features/socket%20connection/application/so
 import 'package:ping_store_check/src/generic%20components/my_dialog_log.dart';
 
 Future<void> onShowDuplicatePressed(BuildContext context) async {
+  List<String> records = [];
   await sendTo(
     context: context,
-    msg: '${commands['show_duplicate']}',
+    msg: commands['show_duplicate']!,
+    recordsMode: true,
     onData: (data) async {
-      dynamic records;
-      try{
-        records = json.decode(utf8.decode(data));
+      String message = utf8.decode(data);
+      if(message == logs['not_found']) {
+        await myShowDialogLog(
+          context: context,
+          log: 'No duplicates found',
+        );
+      } else if(message == logs['success']) {
         await showDialog(
           context: context, 
           builder: (context) {
@@ -25,8 +31,8 @@ Future<void> onShowDuplicatePressed(BuildContext context) async {
             );
           },
         );
-      } catch(e) {
-        await myShowDialogLog(context: context, log: 'No duplicates found');
+      } else {
+        records.add(utf8.decode(data));
       }
     },
   );
@@ -35,7 +41,7 @@ Future<void> onShowDuplicatePressed(BuildContext context) async {
 Future<void> onDeleteDuplicatePressed(BuildContext context) async {
   await sendTo(
     context: context,
-    msg: '${commands['delete_duplicate']}',
+    msg: commands['delete_duplicate']!,
     onData: (data) async {
       String response = utf8.decode(data);
       if(response == logs['not_found']) {
@@ -56,7 +62,7 @@ Future<void> onDeleteDuplicatePressed(BuildContext context) async {
 Future<void> onBackupDatabasePressed(BuildContext context) async {
   await sendTo(
     context: context,
-    msg: '${commands['backup']}',
+    msg: commands['backup']!,
     onData: (data) async {
       String response = utf8.decode(data);
       if(response == logs['success']) {
@@ -72,7 +78,7 @@ Future<void> onBackupDatabasePressed(BuildContext context) async {
 Future<void> onUpdateDatabasePressed(BuildContext context) async {
   await sendTo(
     context: context,
-    msg: '${commands['update_database']}',
+    msg: commands['update_database']!,
     onData: (data) async {
       String response = utf8.decode(data);
       if(response == logs['success']) {
@@ -86,19 +92,23 @@ Future<void> onUpdateDatabasePressed(BuildContext context) async {
 }
 
 Future<void> onSyncDatabaseLocallyPressed(BuildContext context) async {
+  List<int> buffer = [];
+  Directory? directory = await getExternalStorageDirectory();
+  File file = File('${directory!.path}/import.csv');
   await sendTo(
     context: context,
-    msg: '${commands['get_database_file']}',
+    msg: commands['get_database_file']!,
+    recordsMode: true,
     onData: (data) async {
-      getApplicationDocumentsDirectory().then((dir) async {
-        String path = '${dir.path}/import.csv';
-        File file = File(path);
-        await file.writeAsBytes(data);
+      if(utf8.decode(data) == logs['success']) {
+        file.writeAsBytesSync(buffer);
         await myShowDialogLog(
           context: context,
-          log: 'Database synced locally successfully',
+          log: 'Database update completed successfully',
         );
-      });
+      } else {
+        buffer += data;
+      }
     },
   );
 }

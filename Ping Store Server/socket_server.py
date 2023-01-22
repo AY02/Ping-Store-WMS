@@ -38,6 +38,15 @@ COMMANDS = {
     'backup': '!backup',
     'update_database': '!update_database',
 
+    'show_edit': '!show_edit',
+    'show_add': '!show_add',
+    'delete_edit': '!delete_edit',
+    'delete_add': '!delete_add',
+
+    'add_database': '!_add_database',
+    'edit_main_server': '!_edit_main_server',
+    'get_database_file': '!get_database_file',
+
 }
 
 def get_process(name):
@@ -211,6 +220,13 @@ def on_update_database(conn):
     print('Database aggiornato')
     conn.send(LOGS['success'].encode('utf-8'))
 
+def on_get_database_file(conn):
+    print('Invio del file import.csv ...')
+    with open(FILENAME_DEFAULT, 'rb') as f:
+        data = f.read()
+        conn.sendall(data)
+    print('File inviato')
+
 def multi_thread_conn(conn, addr):
     global N_THREAD
     while True:
@@ -231,6 +247,7 @@ def multi_thread_conn(conn, addr):
         if message == COMMANDS['delete_duplicate']: on_delete_duplicate(conn)
         if message == COMMANDS['backup']: on_backup(conn)
         if message == COMMANDS['update_database']: on_update_database(conn)
+        if message == COMMANDS['get_database_file']: on_get_database_file(conn)
     
     print('Chiusura connessione...')
     conn.close()

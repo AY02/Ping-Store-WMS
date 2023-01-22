@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:ping_store_check/constants.dart';
 import 'package:ping_store_check/src/features/socket%20connection/application/socket_connection.dart';
 import 'package:ping_store_check/src/generic%20components/my_dialog_log.dart';
@@ -79,6 +81,24 @@ Future<void> onUpdateDatabasePressed(BuildContext context) async {
           log: 'Database update completed successfully',
         );
       }
+    },
+  );
+}
+
+Future<void> onSyncDatabaseLocallyPressed(BuildContext context) async {
+  await sendTo(
+    context: context,
+    msg: '${commands['get_database_file']}',
+    onData: (data) async {
+      getApplicationDocumentsDirectory().then((dir) async {
+        String path = '${dir.path}/import.csv';
+        File file = File(path);
+        await file.writeAsBytes(data);
+        await myShowDialogLog(
+          context: context,
+          log: 'Database synced locally successfully',
+        );
+      });
     },
   );
 }

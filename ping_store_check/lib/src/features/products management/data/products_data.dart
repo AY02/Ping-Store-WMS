@@ -36,5 +36,6 @@ String mergeFields(List<String> fieldsToMerge) {
 const bool editMode = false;
 const bool addMode = true;
 
-const bool searchMode = false;
-const bool deleteMode = true;
+const String searchMode = 'search_mode';
+const String searchLocallyMode = 'search_locally_mode';
+const String deleteMode = 'delete_mode';

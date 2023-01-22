@@ -4,7 +4,7 @@ import 'package:ping_store_check/src/features/products%20management/data/product
 
 class MyBarcodeForm extends StatefulWidget {
   final String barcode;
-  final bool mode;
+  final String mode;
   const MyBarcodeForm({
     super.key,
     required this.barcode,
@@ -48,7 +48,9 @@ class _MyBarcodeFormState extends State<MyBarcodeForm> {
             widget.mode,
             _barcodeController.text,
           ),
-          child: Text(widget.mode == searchMode ? 'Search' : 'Delete'),
+          child: Text(
+            [searchLocallyMode, searchMode].contains(widget.mode) ? 'Search' : 'Delete',
+          ),
         ),
       ],
     );

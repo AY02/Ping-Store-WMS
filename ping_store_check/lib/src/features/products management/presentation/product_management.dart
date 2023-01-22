@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ping_store_check/src/features/products%20management/application/on_pressed_functions.dart';
+import 'package:ping_store_check/src/features/products%20management/data/products_data.dart';
 import 'package:ping_store_check/src/generic%20components/my_gridview.dart';
 
 class MyProductManagement extends StatelessWidget {
@@ -19,7 +20,7 @@ class MyProductManagement extends StatelessWidget {
           label: const Text('EDIT'),
         ),
         ElevatedButton.icon(
-          onPressed: () async => await onSearch(context),
+          onPressed: () async => await onSearch(context, searchMode),
           icon: const Icon(Icons.search),
           label: const Text('SEARCH'),
         ),
@@ -27,6 +28,11 @@ class MyProductManagement extends StatelessWidget {
           onPressed: () async => await onDelete(context),
           icon: const Icon(Icons.delete),
           label: const Text('DELETE'),
+        ),
+        ElevatedButton.icon(
+          onPressed: () async => await onSearch(context, searchLocallyMode),
+          icon: const Icon(Icons.search),
+          label: const Text('SEARCH LOCALLY'),
         ),
       ],
     );

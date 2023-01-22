@@ -29,6 +29,11 @@ class MyDatabaseControl extends StatelessWidget {
           icon: const Icon(Icons.update),
           label: const Text('UPDATE DATABASE'),
         ),
+        ElevatedButton.icon(
+          onPressed: () async => await onSyncDatabaseLocallyPressed(context),
+          icon: const Icon(Icons.sync),
+          label: const Text('SYNC DATABASE LOCALLY'),
+        ),
       ],
     );
   }

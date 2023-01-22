@@ -18,6 +18,13 @@ const Map<String, String> commands = {
   'backup': '!backup',
   'update_database': '!update_database',
 
-  'ping': '!ping',
+  'show_edit': '!show_edit',
+  'show_add': '!show_add',
+  'delete_edit': '!delete_edit',
+  'delete_add': '!delete_add',
+
+  'add_database': '!_add_database',
+  'edit_main_server': '!_edit_main_server',
+  'get_database_file': '!get_database_file',
 
 };

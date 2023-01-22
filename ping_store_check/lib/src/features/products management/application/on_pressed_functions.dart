@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:ping_store_check/constants.dart';
 import 'package:ping_store_check/src/features/products%20management/application/barcode_scan.dart';
 import 'package:ping_store_check/src/features/products%20management/data/products_data.dart';
@@ -47,13 +49,13 @@ Future<void> onEdit(BuildContext context) async {
   );
 }
 
-Future<void> onSearch(BuildContext context) async {
+Future<void> onSearch(BuildContext context, String mode) async {
   String barcode = await scanBarcode();
   await showDialog(
     context: context,
     builder: (context) {
       return Dialog(
-        child: MyBarcodeForm(barcode: barcode, mode: searchMode),
+        child: MyBarcodeForm(barcode: barcode, mode: mode),
       );
     }
   );
@@ -71,7 +73,11 @@ Future<void> onDelete(BuildContext context) async {
   );
 }
 
-Future<void> onSendRecord(BuildContext context, bool mode, List<TextEditingController> controllers) async {
+Future<void> onSendRecord(
+  BuildContext context,
+  bool mode,
+  List<TextEditingController> controllers,
+) async {
   String record;
   if(mode == addMode) {
     record = List.generate(fields.length, (i) => controllers[i].text).join(';');
@@ -116,7 +122,7 @@ Future<void> onSendRecord(BuildContext context, bool mode, List<TextEditingContr
   }
 }
 
-Future<void> onSendBarcode(BuildContext context, bool mode, String barcode) async {
+Future<void> onSendBarcode(BuildContext context, String mode, String barcode) async {
   if(mode == searchMode) {
     await sendTo(
       context: context,
@@ -157,5 +163,23 @@ Future<void> onSendBarcode(BuildContext context, bool mode, String barcode) asyn
         }
       }
     );
+  } else if(mode == searchLocallyMode) {
+    getApplicationDocumentsDirectory().then((dir) async {
+      File f = File('${dir.path}/import.csv');
+      if(!f.existsSync()) {
+        await myShowDialogLog(context: context, log: 'File does not exist');
+        return;
+      }
+      List<String> records = f.readAsLinesSync();
+      for(int i=0; i<records.length; i++) {
+        String tmpBarcode = records[i].split(';')[0];
+        if(barcode == tmpBarcode) {
+          await myShowDialogLog(context: context, log: records[i]);
+          return;
+        }
+      }
+      await myShowDialogLog(context: context, log: 'Record not found');
+    });
+    Navigator.pop(context);
   }
 }

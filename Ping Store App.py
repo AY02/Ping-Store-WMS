@@ -48,79 +48,83 @@ def read_file(filename):
     with open(filename, mode='r', encoding='utf-8') as f:
         return f.readlines()
 
-def show_duplicates():
-    if RECORD_LIST.winfo_ismapped():
-        RECORD_LIST.grid_forget()
-        VERTICAL_SCROLLBAR.grid_forget()
-        HORIZONTAL_SCROLLBAR.grid_forget()
-    else:
-        records = read_file(DEFAULT_FILENAME)
-        repeated_records = get_repeated_records(records)
-        repeated_records.sort()
-        
-        if repeated_records:
-            RECORD_LIST.grid(row=3, column=0, columnspan=2, sticky='nesw')
-            for repeated_record in repeated_records:
-                RECORD_LIST.insert(tk.END, repeated_record[:-1])
+def remove_record_list():
+    RECORD_LIST.grid_forget()
+    VERTICAL_SCROLLBAR.grid_forget()
+    HORIZONTAL_SCROLLBAR.grid_forget()
 
-            VERTICAL_SCROLLBAR.grid(row=3, column=2, sticky='nesw')
-            HORIZONTAL_SCROLLBAR.grid(row=4, column=0, columnspan=2, sticky='nesw')
-            LOG_LABEL.config(text='Log: ')
-        else:
-            #LOG_LABEL.config(text='Log: Duplicates not found')
-            LOG_LABEL.config(text='Log: 未找到重复项')
+def show_duplicates():
+
+    if RECORD_LIST.winfo_ismapped():
+        remove_record_list()
+        return
+    
+    records = read_file(DEFAULT_FILENAME)
+    repeated_records = get_repeated_records(records)
+    if not repeated_records:
+        #LOG_LABEL.config(text='Log: Duplicates not found')
+        LOG_LABEL.config(text='Log: 未找到重复项')
+        return
+
+    repeated_records.sort()
+    RECORD_LIST.grid(row=3, column=0, columnspan=2, sticky='nesw')
+    for repeated_record in repeated_records:
+        RECORD_LIST.insert(tk.END, repeated_record[:-1])
+
+    VERTICAL_SCROLLBAR.grid(row=3, column=2, sticky='nesw')
+    HORIZONTAL_SCROLLBAR.grid(row=4, column=0, columnspan=2, sticky='nesw')
+    LOG_LABEL.config(text='Log: ')
 
 def delete_duplicates():
-    if RECORD_LIST.winfo_ismapped():
-        RECORD_LIST.grid_forget()
-        VERTICAL_SCROLLBAR.grid_forget()
-        HORIZONTAL_SCROLLBAR.grid_forget()
+
+    if RECORD_LIST.winfo_ismapped(): remove_record_list()
+
     records = read_file(DEFAULT_FILENAME)
     repeated_records = get_repeated_records(records)
-    if repeated_records:
-        repeated_records.sort()
-        unique_records = get_unique_records(records)
-        write_file(DEFAULT_FILENAME, unique_records)
-        #LOG_LABEL.config(text='Log: Duplicates deleted successfully')
-        LOG_LABEL.config(text='Log: 重复删除成功')
-    else:
+    if not repeated_records:
         #LOG_LABEL.config(text='Log: Duplicates not found')
         LOG_LABEL.config(text='Log: 未找到重复项')
+        return
+
+    repeated_records.sort()
+    unique_records = get_unique_records(records)
+    write_file(DEFAULT_FILENAME, unique_records)
+    #LOG_LABEL.config(text='Log: Duplicates deleted successfully')
+    LOG_LABEL.config(text='Log: 重复删除成功')
 
 def save_duplicates():
-    if RECORD_LIST.winfo_ismapped():
-        RECORD_LIST.grid_forget()
-        VERTICAL_SCROLLBAR.grid_forget()
-        HORIZONTAL_SCROLLBAR.grid_forget()
+
+    if RECORD_LIST.winfo_ismapped(): remove_record_list()
+
     records = read_file(DEFAULT_FILENAME)
     repeated_records = get_repeated_records(records)
-    if repeated_records:
-        repeated_records.sort()
-        write_file(DUPLICATES_FILENAME, repeated_records)
-        #LOG_LABEL.config(text='Log: Duplicates saved successfully')
-        LOG_LABEL.config(text='Log: 重复删除成功')
-    else:
+    if not repeated_records:
         #LOG_LABEL.config(text='Log: Duplicates not found')
         LOG_LABEL.config(text='Log: 未找到重复项')
+        return
+
+    repeated_records.sort()
+    write_file(DUPLICATES_FILENAME, repeated_records)
+    #LOG_LABEL.config(text='Log: Duplicates saved successfully')
+    LOG_LABEL.config(text='Log: 重复删除成功')
 
 def append_records():
-    if RECORD_LIST.winfo_ismapped():
-        RECORD_LIST.grid_forget()
-        VERTICAL_SCROLLBAR.grid_forget()
-        HORIZONTAL_SCROLLBAR.grid_forget()
+
+    if RECORD_LIST.winfo_ismapped(): remove_record_list()
 
     new_records_file = tk.filedialog.askopenfilename()
-    if new_records_file:
-        new_records = read_file(new_records_file)
-        if new_records:
-            records = read_file(DEFAULT_FILENAME)
-            records.extend(new_records)
-            write_file(DEFAULT_FILENAME, records)
-            LOG_LABEL.config(text=f'Log: {new_records_file}')
-        else:
-            #LOG_LABEL.config(text=f'Log: New records not found')
-            LOG_LABEL.config(text=f'Log: 未找到新记录')
+    if not new_records_file: return
 
+    new_records = read_file(new_records_file)
+    if not new_records:
+        #LOG_LABEL.config(text=f'Log: New records not found')
+        LOG_LABEL.config(text=f'Log: 未找到新记录')
+        return
+
+    records = read_file(DEFAULT_FILENAME)
+    records.extend(new_records)
+    write_file(DEFAULT_FILENAME, records)
+    LOG_LABEL.config(text=f'Log: {new_records_file}')
 
 DEFAULT_FILENAME = 'import.csv'
 DUPLICATES_FILENAME = 'duplicates.csv'

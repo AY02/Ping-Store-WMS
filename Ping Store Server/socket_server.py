@@ -1,5 +1,5 @@
 import os, socket, argparse
-import shutil, psutil
+import shutil, psutil, json
 import pyautogui as pag
 from _thread import *
 
@@ -9,7 +9,9 @@ SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 HOST_DEFAULT = socket.gethostbyname(socket.gethostname())
 PORT_DEFAULT = 10000
 
-CHUNK_SIZE = 8192
+CHUNK_LIST_SIZE = 8
+
+CHUNK_SIZE = 32768
 BUFFER_SIZE = 1024
 
 DEFAULT_FILENAME = 'import.csv'
@@ -184,8 +186,9 @@ def on_show_duplicate(conn):
         print(f'Duplicati trovati: {repeated_records}')
         write_file(DUPLICATES_FILENAME, repeated_records)
         print('Invio i duplicati...')
-        for repeated_record in repeated_records:
-            conn.send(repeated_record.encode('utf-8'))
+        for i in range(0, len(repeated_records), CHUNK_LIST_SIZE):
+            chunk = repeated_records[i:i+CHUNK_LIST_SIZE]
+            conn.send(json.dumps(chunk).encode('utf-8'))
             conn.recv(BUFFER_SIZE)
         print('Duplicati inviati')
         conn.send(LOGS['success'].encode('utf-8'))

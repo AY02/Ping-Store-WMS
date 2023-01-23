@@ -29,12 +29,12 @@ Future<void> sendTo({
     client.listen((data) async {
       await onData!(data);
       if(recordsMode) {
-        if(utf8.decode(data) == logs['success']) {
+        if(utf8.decode(data).contains(logs['success']!) || utf8.decode(data).contains(logs['not_found']!)) {
           client.destroy();
           await client.close();
-        } else {
-          client.write(logs['ping']);
+          return;
         }
+        client.write(logs['ping']);
       } else {
         client.destroy();
         await client.close();

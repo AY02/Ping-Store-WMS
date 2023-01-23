@@ -13,26 +13,31 @@ Future<void> onShowDuplicatePressed(BuildContext context) async {
     msg: commands['show_duplicate']!,
     recordsMode: true,
     onData: (data) async {
-      String message = utf8.decode(data);
-      if(message == logs['not_found']) {
-        await myShowDialogLog(
-          context: context,
-          log: 'No duplicates found',
-        );
-      } else if(message == logs['success']) {
-        await showDialog(
-          context: context, 
-          builder: (context) {
-            return Dialog(
-              child: ListView.builder(
-                itemCount: records.length,
-                itemBuilder: (BuildContext context, int index) => Text(records[index]),
-              )
-            );
-          },
-        );
-      } else {
-        records.add(utf8.decode(data));
+      try {
+        List<dynamic> chunk = json.decode(utf8.decode(data));
+        for(String record in chunk) {
+          records.add(record);
+        }
+      } catch(e) {
+        String message = utf8.decode(data);
+        if(message == logs['not_found']) {
+          await myShowDialogLog(
+            context: context,
+            log: 'No duplicates found',
+          );
+        } else if(message == logs['success']) {
+          await showDialog(
+            context: context, 
+            builder: (context) {
+              return Dialog(
+                child: ListView.builder(
+                  itemCount: records.length,
+                  itemBuilder: (BuildContext context, int index) => Text(records[index]),
+                )
+              );
+            },
+          );
+        }
       }
     },
   );
@@ -100,7 +105,7 @@ Future<void> onSyncDatabaseLocallyPressed(BuildContext context) async {
     msg: commands['get_database_file']!,
     recordsMode: true,
     onData: (data) async {
-      if(utf8.decode(data) == logs['success']) {
+      if(utf8.decode(data).contains(logs['success']!)) {
         file.writeAsBytesSync(buffer);
         await myShowDialogLog(
           context: context,

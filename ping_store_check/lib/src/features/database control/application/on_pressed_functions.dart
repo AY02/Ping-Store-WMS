@@ -106,7 +106,7 @@ Future<void> onSyncDatabaseLocallyPressed(BuildContext context) async {
     recordsMode: true,
     onData: (data) async {
       String message = utf8.decode(data);
-      if(logs['success']!.contains(message)) {
+      if(message.contains(logs['success']!)) {
         if(message != logs['success']) {
           message.replaceAll(logs['success']!, '');
           buffer += utf8.encode(message);

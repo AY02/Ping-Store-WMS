@@ -105,7 +105,12 @@ Future<void> onSyncDatabaseLocallyPressed(BuildContext context) async {
     msg: commands['get_database_file']!,
     recordsMode: true,
     onData: (data) async {
-      if(utf8.decode(data).contains(logs['success']!)) {
+      String message = utf8.decode(data);
+      if(logs['success']!.contains(message)) {
+        if(message != logs['success']) {
+          message.replaceAll(logs['success']!, '');
+          buffer += utf8.encode(message);
+        }
         file.writeAsBytesSync(buffer);
         await myShowDialogLog(
           context: context,

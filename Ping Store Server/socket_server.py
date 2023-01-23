@@ -116,7 +116,7 @@ def append_record_to_file(filename, record):
     print('Record inserito')
 
 def read_file(filename):
-    with open(filename, mode='r', encoding='utf-8') as f:
+    with open(filename, mode='r', encoding='utf-8-sig') as f:
         return f.readlines()
 
 def quit_server():
@@ -183,7 +183,7 @@ def on_show_duplicate(conn):
     repeated_records = get_repeated_records(records)
     if repeated_records:
         repeated_records.sort()
-        print(f'Duplicati trovati: {repeated_records}')
+        print(f'Duplicati trovati: {len(repeated_records)}')
         write_file(DUPLICATES_FILENAME, repeated_records)
         print('Invio i duplicati...')
         for i in range(0, len(repeated_records), CHUNK_LIST_SIZE):
@@ -202,7 +202,7 @@ def on_delete_duplicate(conn):
     repeated_records = get_repeated_records(records)
     if repeated_records:
         repeated_records.sort()
-        print(f'Duplicati trovati: {repeated_records}')
+        print(f'Duplicati trovati: {len(repeated_records)}')
         print('Eliminazione dei duplicati...')
         unique_records = get_unique_records(records)
         write_file(DEFAULT_FILENAME, unique_records)

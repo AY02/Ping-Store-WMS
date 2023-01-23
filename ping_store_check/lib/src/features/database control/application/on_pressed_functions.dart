@@ -99,7 +99,7 @@ Future<void> onUpdateDatabasePressed(BuildContext context) async {
 Future<void> onSyncDatabaseLocallyPressed(BuildContext context) async {
   List<int> buffer = [];
   Directory? directory = await getExternalStorageDirectory();
-  File file = File('${directory!.path}/import.csv');
+  File file = File('${directory!.path}/$defaultFilename');
   await sendTo(
     context: context,
     msg: commands['get_database_file']!,

@@ -100,6 +100,7 @@ Future<void> onSyncDatabaseLocallyPressed(BuildContext context) async {
   List<int> buffer = [];
   Directory? directory = await getExternalStorageDirectory();
   File file = File('${directory!.path}/$defaultFilename');
+  // ignore: use_build_context_synchronously
   await sendTo(
     context: context,
     msg: commands['get_database_file']!,

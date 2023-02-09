@@ -18,6 +18,7 @@ Future<void> sendTo({
   String ip = prefs.getString(ipKey) ?? '';
   String port = prefs.getString(portKey) ?? '';
   if(ip.isEmpty || port.isEmpty) {
+    // ignore: use_build_context_synchronously
     await myShowDialogLog(
       context: context,
       log: 'IP address or port not defined',
@@ -42,6 +43,7 @@ Future<void> sendTo({
     });
     client.write(msg);
   } catch(e) {
+    // ignore: use_build_context_synchronously
     await myShowDialogLog(
       context: context,
       log: 'Socket Connection error: ${e.toString()}',

@@ -13,6 +13,7 @@ import 'package:ping_store_check/src/generic%20components/my_dialog_log.dart';
 Future<void> onAdd(BuildContext context) async {
   List<String> record = List<String>.filled(fields.length, '');
   record[0] = await scanBarcode();
+  // ignore: use_build_context_synchronously
   await showDialog(
     context: context,
     builder: (context) {
@@ -25,6 +26,7 @@ Future<void> onAdd(BuildContext context) async {
 
 Future<void> onEdit(BuildContext context) async {
   String barcode = await scanBarcode();
+  // ignore: use_build_context_synchronously
   await sendTo(
     context: context,
     msg: '${commands['find']} $barcode',
@@ -51,6 +53,7 @@ Future<void> onEdit(BuildContext context) async {
 
 Future<void> onSearch(BuildContext context, String mode) async {
   String barcode = await scanBarcode();
+  // ignore: use_build_context_synchronously
   await showDialog(
     context: context,
     builder: (context) {
@@ -63,6 +66,7 @@ Future<void> onSearch(BuildContext context, String mode) async {
 
 Future<void> onDelete(BuildContext context) async {
   String barcode = await scanBarcode();
+  // ignore: use_build_context_synchronously
   await showDialog(
     context: context,
     builder: (context) {
@@ -168,6 +172,7 @@ Future<void> onSendBarcode(BuildContext context, String mode, String barcode) as
     Directory? directory = await getExternalStorageDirectory();
     File f = File('${directory!.path}/$defaultFilename');
     if(!f.existsSync()) {
+      // ignore: use_build_context_synchronously
       await myShowDialogLog(context: context, log: 'File does not exist');
       return;
     }
@@ -175,10 +180,12 @@ Future<void> onSendBarcode(BuildContext context, String mode, String barcode) as
     for(int i=0; i<records.length; i++) {
       String tmpBarcode = records[i].split(';')[0];
       if(barcode == tmpBarcode) {
+        // ignore: use_build_context_synchronously
         await myShowDialogLog(context: context, log: records[i]);
         return;
       }
     }
+    // ignore: use_build_context_synchronously
     await myShowDialogLog(context: context, log: 'Record not found');
   }
 }

@@ -58,12 +58,8 @@ def get_not_formatted_records(records):
         barcode_correct = re.search(r'^\d{13}$', record[0])
         cost_correct = re.search(r'^\d+.\d{2}$', record[6])
         price_correct = re.search(r'^\d+.\d{2}$', record[7])
-        if not (
-            barcode_correct and
-            cost_correct and
-            price_correct and
-            length_correct
-        ):
+        formatted = barcode_correct and cost_correct and price_correct and length_correct
+        if not formatted:
             not_formatted_records.append(record)
     not_formatted_records = get_merged_records(not_formatted_records)
     return not_formatted_records
@@ -141,6 +137,16 @@ def show_bad_formatted_records():
         return
     show_record_list(not_formatted_records)
 
+def delete_bad_formatted_records():
+    if RECORD_LIST.winfo_ismapped(): remove_record_list()
+    records = read_file(DEFAULT_FILENAME)
+    not_formatted_records = get_not_formatted_records(records)
+    if not not_formatted_records:
+        LOG_LABEL.config(text='Log: All records are formatted correctly')
+        return
+    write_file(DEFAULT_FILENAME, list(set(records) - set(not_formatted_records)))
+    LOG_LABEL.config(text='Log: Bad formatted records deleted successfully')
+
 
 DEFAULT_FILENAME = 'import.csv'
 DUPLICATES_FILENAME = 'duplicates.csv'
@@ -173,6 +179,11 @@ BUTTONS = {
         text='Show Badly Formatted Records',
         command=show_bad_formatted_records,
     ),
+    'Delete Badly Formatted Records': tk.Button(
+        ROOT,
+        text='Delete Badly Formatted Records',
+        command=delete_bad_formatted_records,
+    ),
 }
 
 RECORD_LIST = tk.Listbox(ROOT)
@@ -180,6 +191,7 @@ VERTICAL_SCROLLBAR = tk.Scrollbar(ROOT, orient='vertical')
 HORIZONTAL_SCROLLBAR = tk.Scrollbar(ROOT, orient='horizontal')
 
 LOG_LABEL = tk.Label(ROOT, text='Log: ', anchor='w')
+
 
 def main():
 
@@ -195,6 +207,7 @@ def main():
     BUTTONS['Delete Duplicates'].grid(row=1, column=0, sticky='nesw')
     BUTTONS['Append Records'].grid(row=1, column=1, sticky='nesw')
     BUTTONS['Show Badly Formatted Records'].grid(row=0, column=2, sticky='nesw')
+    BUTTONS['Delete Badly Formatted Records'].grid(row=1, column=2, sticky='nesw')
 
     RECORD_LIST.config(yscrollcommand=VERTICAL_SCROLLBAR.set)
     VERTICAL_SCROLLBAR.config(command=RECORD_LIST.yview)
@@ -204,6 +217,7 @@ def main():
     LOG_LABEL.grid(row=2, column=0, columnspan=3, sticky='nesw')
 
     ROOT.mainloop()
+
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,6 @@
-import os
-os.environ['TCL_LIBRARY'] = '/home/ayang/.local/share/uv/python/cpython-3.14.2-linux-x86_64-gnu/lib/tcl9.0'
-os.environ['TK_LIBRARY'] = '/home/ayang/.local/share/uv/python/cpython-3.11.3-linux-x86_64-gnu/lib/tk9.0'
+#import os
+#os.environ['TCL_LIBRARY'] = '/home/ayang/.local/share/uv/python/cpython-3.14.2-linux-x86_64-gnu/lib/tcl9.0'
+#os.environ['TK_LIBRARY'] = '/home/ayang/.local/share/uv/python/cpython-3.11.3-linux-x86_64-gnu/lib/tk9.0'
 
 
 # Properties:
@@ -160,24 +160,44 @@ class Database:
         Database._initialized = True
 
     def set_interval(self, idx: int, min_cost: str | float | Decimal, max_cost: str | float | Decimal, target_price: str | float | Decimal) -> bool:
-        if not (0 <= idx < len(self.intervals)):
-            return False
+        if not (0 <= idx < len(self.intervals)): return False
         try:
             min_cost = Decimal(str(min_cost))
             max_cost = Decimal(str(max_cost))
             target_price = Decimal(str(target_price))
-        except (ValueError, InvalidOperation):
-            return False
+        except (ValueError, InvalidOperation): return False
         new_interval = PriceInterval(min_cost, max_cost, target_price)
         # Interval reset
         if not new_interval.is_set():
             self.intervals[idx] = new_interval
             return True
-        if not new_interval.is_valid():
-            return False
+        if not new_interval.is_valid(): return False
         self.intervals[idx] = new_interval
         return True
 
+    def apply_intervals_to_external_file(self, filename: str) -> int:
+        count = 0
+        if not Path(filename).exists(): return count
+        active_intervals = [i for i in self.intervals if i.is_set()]
+        if not active_intervals: return count
+        rows = list(Database.read_csv(filename))
+        for row in rows:
+            try:
+                cost_val = Decimal(row[ProductIndex.COST])
+                # First match wins
+                for interval in active_intervals:
+                    if interval.min_cost <= cost_val <= interval.max_cost:
+                        new_price_str = f'{interval.target_price:.2f}'
+                        if row[ProductIndex.PRICE1] != new_price_str:
+                            row[ProductIndex.PRICE1] = new_price_str
+                            count += 1
+                        break
+            except (ValueError, InvalidOperation, IndexError):
+                continue
+        if count > 0: Database.write_csv(filename, rows)
+        return count
+
+    """It works on the main database
     def apply_intervals(self) -> int:
         count = 0
         active_intervals = [i for i in self.intervals if i.is_set()]
@@ -194,7 +214,7 @@ class Database:
                         row[ProductIndex.PRICE1] = new_price_str
                         count += 1
                     break
-        return count
+        return count"""
 
     def export_intervals(self) -> None:
         data = []
@@ -260,50 +280,42 @@ class Database:
 
     def attempt_revalidation(self):
         if not self.idx_invalid_rows: return
-        integer_fields = {ProductIndex.BARCODE, ProductIndex.QUANTITY, ProductIndex.STOCK}
-        price_fields = {ProductIndex.COST, ProductIndex.PRICE1, ProductIndex.PRICE2, ProductIndex.PRICE3}
-        re_not_digit = re.compile(r'[^\d]')
-        re_not_price_char = re.compile(r'[^\d.]')
-        re_is_float = re.compile(r'^(\d+\.?\d*|\.\d+)$')
         for i in self.idx_invalid_rows:
-            invalid_row = self.raw_rows[i]
-            # Normalization of the number of fields
-            if len(invalid_row) > FIELD_COUNT:
-                invalid_row = invalid_row[:FIELD_COUNT]
-            elif len(invalid_row) < FIELD_COUNT:
-                invalid_row.extend([''] * (FIELD_COUNT - len(invalid_row)))
-            cleaned_row = []
-            for idx, val in enumerate(invalid_row):
-                val = val.strip().replace('\n', '').replace(STD_DELIMITER, '') # Removal of illegal characters
-                if idx in integer_fields:
-                    val = re_not_digit.sub('', val) # Remove everything that isn't a digit
-                elif idx in price_fields:
-                    val = val.replace(',', '.') # Forces the use of dot as the decimal separator
-                    val = re_not_price_char.sub('', val) # Remove everything that isn't a digit or a dot
-                    # Forces format N.XX
-                    if re_is_float.match(val):
-                        val = f'{Decimal(val):.2f}'
-                elif idx == ProductIndex.SUPPLIER:
-                    val = val.upper()
-                cleaned_row.append(val)
-            # Using default cost
-            if not cleaned_row[ProductIndex.COST]:
-                cleaned_row[ProductIndex.COST] = '0.01'
-            # Default price = cost * 2
-            if not cleaned_row[ProductIndex.PRICE1]:
-                try:
-                    cost_decimal = Decimal(cleaned_row[ProductIndex.COST])
-                    new_price = cost_decimal * 2
-                    cleaned_row[ProductIndex.PRICE1] = f'{new_price:.2f}'
-                except (InvalidOperation, ValueError):
-                    pass
-            # Using default messages for required fields
-            if not cleaned_row[ProductIndex.DESCRIPTION]:
-                cleaned_row[ProductIndex.DESCRIPTION] = 'DESCRIZIONE MANCANTE'
-            if not cleaned_row[ProductIndex.SUPPLIER]:
-                cleaned_row[ProductIndex.SUPPLIER] = 'FORNITORE MANCANTE'
-            self.raw_rows[i] = cleaned_row
+            self.raw_rows[i] = Database.fix_single_row(self.raw_rows[i])
         self._index_all()
+        
+    @staticmethod
+    def fix_invalids_in_external_file(filename: str) -> int:
+        if not Path(filename).exists(): return 0
+        raw_rows = list(Database.read_csv(filename))
+        fixed_count = 0
+        for i, raw_row in enumerate(raw_rows):
+            if Database.is_raw_row_valid(raw_row) == 0:
+                continue
+            raw_rows[i] = Database._fix_single_row(raw_row)
+            fixed_count += 1
+        if fixed_count > 0: Database.write_csv(filename, raw_rows)
+        return fixed_count
+
+    @staticmethod
+    def get_invalids_from_external_file(filename: str) -> list[list[str]]:
+        if not Path(filename).exists(): return []
+        raw_rows = list(Database.read_csv(filename))
+        invalid_rows = []
+        for raw_row in raw_rows:
+            if Database.is_raw_row_valid(raw_row) != 0:
+                invalid_rows.append(raw_row)
+        return invalid_rows
+
+    @staticmethod
+    def remove_invalids_from_external_file(filename: str) -> int:
+        if not Path(filename).exists(): return 0
+        raw_rows = list(Database.read_csv(filename))
+        start = len(raw_rows)
+        valid_rows = [raw_row for raw_row in raw_rows if Database.is_raw_row_valid(raw_row) == 0]
+        deleted_count = start - len(valid_rows)
+        if deleted_count > 0: Database.write_csv(filename, valid_rows)
+        return deleted_count
 
     @staticmethod
     def read_csv(filename: str) -> Iterator[list[str]]:
@@ -326,6 +338,50 @@ class Database:
         with open(filename, mode=mode, encoding='utf-8-sig', newline='') as f:
             writer = csv.writer(f, delimiter=STD_DELIMITER)
             writer.writerows(raw_rows)
+
+    @staticmethod
+    def fix_single_row(invalid_row: list[str]) -> list[str]:
+        integer_fields = {ProductIndex.BARCODE, ProductIndex.QUANTITY, ProductIndex.STOCK}
+        price_fields = {ProductIndex.COST, ProductIndex.PRICE1, ProductIndex.PRICE2, ProductIndex.PRICE3}
+        re_not_digit = re.compile(r'[^\d]')
+        re_not_price_char = re.compile(r'[^\d.]')
+        re_is_float = re.compile(r'^(\d+\.?\d*|\.\d+)$')
+        # Normalization of the number of fields
+        if len(invalid_row) > FIELD_COUNT:
+            invalid_row = invalid_row[:FIELD_COUNT]
+        elif len(invalid_row) < FIELD_COUNT:
+            invalid_row.extend([''] * (FIELD_COUNT - len(invalid_row)))
+        cleaned_row = []
+        for idx, val in enumerate(invalid_row):
+            val = val.strip().replace('\n', '').replace(STD_DELIMITER, '') # Removal of illegal characters
+            if idx in integer_fields:
+                val = re_not_digit.sub('', val) # Remove everything that isn't a digit
+            elif idx in price_fields:
+                val = val.replace(',', '.') # Forces the use of dot as the decimal separator
+                val = re_not_price_char.sub('', val) # Remove everything that isn't a digit or a dot
+                # Forces format N.XX
+                if re_is_float.match(val):
+                    val = f'{Decimal(val):.2f}'
+            elif idx == ProductIndex.SUPPLIER:
+                val = val.upper()
+            cleaned_row.append(val)
+        # Using default cost
+        if not cleaned_row[ProductIndex.COST]:
+            cleaned_row[ProductIndex.COST] = '0.01'
+        # Default price = cost * 2
+        if not cleaned_row[ProductIndex.PRICE1]:
+            try:
+                cost_decimal = Decimal(cleaned_row[ProductIndex.COST])
+                new_price = cost_decimal * 2
+                cleaned_row[ProductIndex.PRICE1] = f'{new_price:.2f}'
+            except (InvalidOperation, ValueError):
+                pass
+        # Using default messages for required fields
+        if not cleaned_row[ProductIndex.DESCRIPTION]:
+            cleaned_row[ProductIndex.DESCRIPTION] = 'DESCRIZIONE MANCANTE'
+        if not cleaned_row[ProductIndex.SUPPLIER]:
+            cleaned_row[ProductIndex.SUPPLIER] = 'FORNITORE MANCANTE'
+        return cleaned_row
 
     @staticmethod
     def is_raw_row_valid(raw_row: list[str]) -> IntFlag:
@@ -462,8 +518,60 @@ class PingStoreApp:
         self._log(f'Intervalli: {msg}')
 
     def apply_intervals(self) -> None:
-        count = self.db.apply_intervals()
-        self._log(f'Applicati intervalli su {count} prodotti.')
+        f = filedialog.askopenfilename(
+            title='Seleziona CSV esterno per applicare intervalli',
+            filetypes=[('CSV', '*.csv')]
+        )
+        if not f:
+            self._log('Operazione annullata.')
+            return
+        count = self.db.apply_intervals_to_external_file(f)
+        self._log(f'Aggiornati {count} prezzi nel file esterno.')
+        messagebox.showinfo(
+            'Completato', 
+            f'File elaborato: {Path(f).name}. Prezzi aggiornati: {count}'
+        )
+
+    def show_invalids_external(self):
+        f = filedialog.askopenfilename(
+            title='Seleziona CSV per visualizzare errori',
+            filetypes=[('CSV', '*.csv')]
+        )
+        if not f: return
+        invalid_rows = Database.get_invalids_from_external_file(f)
+        if not invalid_rows:
+            messagebox.showinfo('Risultato', 'Il file è valido! Nessun errore trovato.')
+        else:
+            self._open_viewer(f'Errori in {Path(f).name}', invalid_rows, extra_col=IT_ERROR_STR)
+            self._log(f'Trovate {len(invalid_rows)} righe invalide nel file esterno.')
+
+    def fix_invalids_external(self):
+        f = filedialog.askopenfilename(
+            title='Seleziona CSV da correggere',
+            filetypes=[('CSV', '*.csv')]
+        )
+        if not f: return
+        count = Database.fix_invalids_in_external_file(f)
+        if count > 0:
+            messagebox.showinfo('Completato', f'Correzione applicata a {count} righe. File aggiornato.')
+            self._log(f'File esterno corretto: {count} modifiche.')
+        else:
+            messagebox.showinfo('Info', 'Nessuna correzione necessaria.')
+            self._log('Nessuna modifica al file esterno.')
+
+    def delete_invalids_external(self):
+        f = filedialog.askopenfilename(
+            title='Seleziona CSV da cui eliminare errori',
+            filetypes=[('CSV', '*.csv')]
+        )
+        if not f: return
+        count = Database.remove_invalids_from_external_file(f)
+        if count > 0:
+            messagebox.showinfo('Completato', f'Eliminate {count} righe invalide. File aggiornato.')
+            self._log(f'File esterno pulito: eliminate {count} righe.')
+        else:
+            messagebox.showinfo('Info', 'Nessuna riga invalida trovata.')
+            self._log('Nessuna eliminazione sul file esterno.')
 
     def open_interval_editor(self):
         top = tk.Toplevel(self.root)
@@ -551,7 +659,7 @@ class PingStoreApp:
     def _setup_grid(self) -> None:
         for col in range(3):
             self.root.grid_columnconfigure(col, weight=1)
-        for row in range(5):
+        for row in range(6):
             self.root.grid_rowconfigure(row, weight=1)
 
     def _build_ui(self) -> None:
@@ -572,6 +680,11 @@ class PingStoreApp:
                 ('Applica intervalli', self.apply_intervals)
             ],
             [
+                ('Mostra invalidi CSV esterno', self.show_invalids_external),
+                ('Correggi invalidi CSV esterno', self.fix_invalids_external),
+                ('Elimina invalidi CSV esterno', self.delete_invalids_external)
+            ],
+            [
                 ('Correggi invalidi', self.fix_invalids), 
                 ('Appendi CSV', self.append_csv), 
                 ('Conferma modifiche', self.confirm_changes)
@@ -582,7 +695,7 @@ class PingStoreApp:
                 btn = tk.Button(self.root, text=text, command=command)
                 btn.grid(row=i, column=j, sticky='nsew')
         lbl_log = tk.Label(self.root, textvariable=self.log_var, anchor='w')
-        lbl_log.grid(row=4, column=0, columnspan=3, sticky='nsew')
+        lbl_log.grid(row=5, column=0, columnspan=3, sticky='nsew')
 
     def _log(self, message: str) -> None:
         self.log_var.set(f'Log: {message}')
